@@ -1,31 +1,46 @@
-loadGruntTasks = require 'load-grunt-tasks'
 module.exports = (grunt) ->
-  loadGruntTasks(grunt)
+  grunt.loadNpmTasks 'grunt-coffeelint'
+  grunt.loadNpmTasks 'grunt-contrib-clean'
+  grunt.loadNpmTasks 'grunt-contrib-coffee'
+  grunt.loadNpmTasks 'grunt-contrib-concat'
+  grunt.loadNpmTasks 'grunt-contrib-connect'
+  grunt.loadNpmTasks 'grunt-contrib-uglify'
+  grunt.loadNpmTasks 'grunt-protractor-runner'
+
+  sauceUser = 'pomerantsevp'
+  sauceKey = '497ab04e-f31b-4a7b-9b18-ae3fbe023222'
 
   grunt.initConfig
     pkg: grunt.file.readJSON 'package.json'
     meta:
       banner: '/* <%= pkg.name %> - v<%= pkg.version %> - <%= grunt.template.today("yyyy-mm-dd") %> */\n'
-    eslint:
-      target: ['src', 'test']
+    coffeelint:
+      src: 'src/**/*.coffee'
+      options:
+        max_line_length:
+          level: 'ignore'
+        line_endings:
+          value: 'unix'
+          level: 'error'
+        no_stand_alone_at:
+          level: 'error'
     clean:
       options:
         force: true
       build: ["compile/**", "build/**"]
-    babel:
+    coffee:
       compile:
         files: [
           {
             expand: true
             cwd: 'src/'
-            src: '**/*.js'
+            src: '**/*.coffee'
             dest: 'compile/'
             ext: '.js'
           }
-        ]
+        ],
         options:
-          presets: ["es2015", "es2016", "stage-1"]
-          plugins: ["add-module-exports", "transform-es2015-modules-umd"]
+          bare: true
     concat:
       options:
         banner: '<%= meta.banner %>'
@@ -49,10 +64,20 @@ module.exports = (grunt) ->
     protractor:
       local:
         options:
-          configFile: 'test/protractor.conf.js'
+          configFile: 'test/protractor-local.conf.js'
           args:
             params:
               testThrottleValue: 500
+      travis:
+        options:
+          configFile: 'test/protractor-travis.conf.js'
+          args:
+            params:
+              # When using Sauce Connect, we should use a large timeout
+              # since everything is generally much slower than when testing locally.
+              testThrottleValue: 10000
+            sauceUser: sauceUser
+            sauceKey: sauceKey
 
   grunt.registerTask 'webdriver', () ->
     done = this.async()
@@ -70,7 +95,7 @@ module.exports = (grunt) ->
       else done()
     )
 
-  grunt.registerTask 'default', ['eslint', 'clean', 'babel', 'concat', 'uglify']
+  grunt.registerTask 'default', ['coffeelint', 'clean', 'coffee', 'concat', 'uglify']
   grunt.registerTask 'test:protractor-local', [
     'default',
     'webdriver',
